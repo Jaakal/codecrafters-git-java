@@ -3,6 +3,7 @@ import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.util.zip.Inflater;
 
 public class Main {
@@ -45,6 +46,26 @@ public class Main {
         } catch (Exception e) {
           throw new RuntimeException(e);
         }
+      }
+      case "hash-object" -> {
+        String fileName = args[2];
+
+        try {
+          String content = Files.readString(Paths.get(fileName));
+          String rawObject = "blob " + content.length() + "\0" + content;
+          String shaHash = Util.generateSHAHash(rawObject, "SHA-1");
+          System.out.println(shaHash);
+
+          String objectDirectory = ".git/objects/" + shaHash.substring(0, 2);
+          String objectFileName = shaHash.substring(2);
+          new File(objectDirectory).mkdirs();
+          final File objectFile = new File(objectDirectory, objectFileName);
+          objectFile.createNewFile();
+          Util.writeCompressedDataToFile(rawObject, objectFile);
+        } catch (Exception e) {
+          throw new RuntimeException(e);
+        }
+
       }
       default -> System.out.println("Unknown command: " + command);
     }
