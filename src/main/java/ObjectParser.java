@@ -45,6 +45,13 @@ public class ObjectParser {
   }
 
   public ByteBuffer getContentBuffer() {
+    System.out.println("++++++++++++++++");
+    System.out.println(this.object);
+    System.out.println(this.object.length);
+    System.out.println(this.contentStartIndex);
+    System.out.println(this.contentSize);
+    System.out.println("++++++++++++++++");
+
     return this.objectBuffer.position(this.contentStartIndex)
         .limit(this.contentStartIndex + this.contentSize).slice();
   }
