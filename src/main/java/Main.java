@@ -38,8 +38,8 @@ public class Main {
           byte[] contents = new byte[inflater.getRemaining()];
           inflater.inflate(contents);
 
-          ParseObject parsedObject = new ParseObject(contents);
-          System.out.print(parsedObject.getContent());
+          ObjectParser parsedObject = new ObjectParser(contents);
+          System.out.print(parsedObject.getContentString());
 
           inflater.end();
           inputStream.close();
@@ -66,6 +66,29 @@ public class Main {
           throw new RuntimeException(e);
         }
 
+      }
+      case "ls-tree" -> {
+        String directory = args[2].substring(0, 2);
+        String fileName = args[2].substring(2);
+
+        try {
+          InputStream inputStream = new FileInputStream(".git/objects/" + directory + "/" + fileName);
+          byte[] compressedData = inputStream.readAllBytes();
+
+          Inflater inflater = new Inflater();
+          inflater.setInput(compressedData);
+          byte[] contents = new byte[inflater.getRemaining()];
+          inflater.inflate(contents);
+
+          ObjectParser parsedObject = new ObjectParser(contents);
+          TreeParser parsedTree = new TreeParser(parsedObject);
+          parsedTree.printNames();
+
+          inflater.end();
+          inputStream.close();
+        } catch (Exception e) {
+          throw new RuntimeException(e);
+        }
       }
       default -> System.out.println("Unknown command: " + command);
     }
