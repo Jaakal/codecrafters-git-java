@@ -15,6 +15,6 @@ public enum ObjectType {
       }
     }
 
-    throw new IllegalArgumentException("No ObjectType with label: " + label);
+    throw new IllegalArgumentException("No object type with label: " + label);
   }
 }

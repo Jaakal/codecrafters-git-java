@@ -4,11 +4,11 @@ import java.nio.charset.StandardCharsets;
 public class ObjectParser {
   private final byte[] object;
   private final ByteBuffer objectBuffer;
+  private ObjectType type;
   private int typeStartIndex;
   private int typeLength;
-  private ObjectType type;
-  private int contentSize;
   private int contentStartIndex;
+  private int contentLength;
 
   public ObjectParser(byte[] object) {
     this.object = object;
@@ -35,7 +35,7 @@ public class ObjectParser {
     }
     int sizeLength = sizeEndIndex - sizeStartIndex;
     this.contentStartIndex = sizeStartIndex + sizeLength + 1; // After the null terminator
-    this.contentSize = Integer.parseInt(new String(this.object, sizeStartIndex, sizeLength, StandardCharsets.UTF_8),
+    this.contentLength = Integer.parseInt(new String(this.object, sizeStartIndex, sizeLength, StandardCharsets.UTF_8),
         10);
   }
 
@@ -45,15 +45,8 @@ public class ObjectParser {
   }
 
   public ByteBuffer getContentBuffer() {
-    // System.out.println("++++++++++++++++");
-    // System.out.println(this.object);
-    // System.out.println(this.object.length);
-    // System.out.println(this.contentStartIndex);
-    // System.out.println(this.contentSize);
-    // System.out.println("++++++++++++++++");
-
     return this.objectBuffer.position(this.contentStartIndex)
-        .limit(this.contentStartIndex + this.contentSize).slice();
+        .limit(this.contentStartIndex + this.contentLength).slice();
   }
 
   public ObjectType getType() {
