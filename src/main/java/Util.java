@@ -10,6 +10,10 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.time.Instant;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -102,7 +106,7 @@ public class Util {
     }
 
     byte[] treeObjectData = treeStream.toByteArray();
-    byte[] hash = generateSHAHash(treeObjectData);
+    byte[] hash = Util.generateSHAHash(treeObjectData);
 
     if (isTopLevel) {
       String hashString = Util.bytesToHexString(hash);
@@ -128,9 +132,9 @@ public class Util {
     String objectFileDirectory = ".git/objects/" + hash.substring(0, 2);
     String objectFileName = hash.substring(2);
     new File(objectFileDirectory).mkdirs();
-    final File treeFile = new File(objectFileDirectory, objectFileName);
-    treeFile.createNewFile();
-    Util.writeCompressedDataToFile(objectData, treeFile);
+    final File objectFile = new File(objectFileDirectory, objectFileName);
+    objectFile.createNewFile();
+    Util.writeCompressedDataToFile(objectData, objectFile);
   }
 
   public static HashMap<Args, ArgumentValue> parseArgs(String[] args) {
@@ -149,6 +153,15 @@ public class Util {
         String fileName = args[2].substring(2);
         parsedArgs.put(Args.DIRECTORY, new ArgumentValue.StringValue(directory));
         parsedArgs.put(Args.FILE_NAME, new ArgumentValue.StringValue(fileName));
+        break;
+      }
+      case Command.COMMIT_TREE -> {
+        String treeSHA = args[1];
+        String parentCommit = args[3];
+        String commitMessage = args[5];
+        parsedArgs.put(Args.TREE_SHA, new ArgumentValue.StringValue(treeSHA));
+        parsedArgs.put(Args.COMMIT_SHA, new ArgumentValue.StringValue(parentCommit));
+        parsedArgs.put(Args.COMMIT_MESSAGE, new ArgumentValue.StringValue(commitMessage));
         break;
       }
       default -> {
@@ -201,5 +214,53 @@ public class Util {
     final File objectFile = new File(objectDirectory, objectFileName);
     objectFile.createNewFile();
     Util.writeCompressedDataToFile(blob, objectFile);
+  }
+
+  private static String generateTimestamp() {
+    long unixTimestamp = Instant.now().getEpochSecond();
+    ZonedDateTime now = ZonedDateTime.now(ZoneId.of("Europe/Tallinn"));
+    String timeZoneOffset = DateTimeFormatter.ofPattern("XXX").format(now);
+    return unixTimestamp + " " + timeZoneOffset;
+  }
+
+  public static void createCommit(HashMap<Args, ArgumentValue> parsedArgs)
+      throws IOException, NoSuchAlgorithmException {
+    ByteArrayOutputStream contentStream = new ByteArrayOutputStream();
+
+    contentStream.write("tree ".getBytes(StandardCharsets.UTF_8));
+    contentStream
+        .write(((ArgumentValue.StringValue) parsedArgs.get(Args.TREE_SHA)).value().getBytes(StandardCharsets.UTF_8));
+    contentStream.write("\n".getBytes());
+
+    contentStream.write("parent ".getBytes(StandardCharsets.UTF_8));
+    contentStream.write(
+        ((ArgumentValue.StringValue) parsedArgs.get(Args.COMMIT_SHA)).value().getBytes(StandardCharsets.UTF_8));
+    contentStream.write("\n".getBytes());
+
+    byte[] timestamp = Util.generateTimestamp().getBytes(StandardCharsets.UTF_8);
+
+    contentStream.write("author Jaakal <jaak.kivinukk@gmail.com> ".getBytes(StandardCharsets.UTF_8));
+    contentStream.write(timestamp);
+    contentStream.write("\n".getBytes());
+
+    contentStream.write("commiter Jaakal <jaak.kivinukk@gmail.com> ".getBytes(StandardCharsets.UTF_8));
+    contentStream.write(timestamp);
+    contentStream.write("\n\n".getBytes());
+
+    contentStream.write(
+        ((ArgumentValue.StringValue) parsedArgs.get(Args.COMMIT_MESSAGE)).value().getBytes(StandardCharsets.UTF_8));
+    contentStream.write("\n".getBytes());
+
+    ByteArrayOutputStream commitStream = new ByteArrayOutputStream();
+
+    commitStream.write(("commit " + contentStream.size() + "\0").getBytes(StandardCharsets.UTF_8));
+    commitStream.write(contentStream.toByteArray());
+
+    byte[] commitObjectData = commitStream.toByteArray();
+    byte[] hash = Util.generateSHAHash(commitObjectData);
+
+    String hashString = Util.bytesToHexString(hash);
+    Util.writeObjectFile(commitObjectData, hashString);
+    System.out.println(hashString);
   }
 }

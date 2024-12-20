@@ -26,6 +26,10 @@ public class Main {
           Util.treeGenerator(null);
           break;
         }
+        case Command.COMMIT_TREE -> {
+          Util.createCommit(parsedArgs);
+          break;
+        }
       }
     } catch (Exception e) {
       throw new RuntimeException(e);

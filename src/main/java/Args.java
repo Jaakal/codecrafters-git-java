@@ -1,5 +1,8 @@
 public enum Args {
   DIRECTORY,
   FILE_NAME,
-  COMMAND
+  COMMAND,
+  TREE_SHA,
+  COMMIT_SHA,
+  COMMIT_MESSAGE
 }
