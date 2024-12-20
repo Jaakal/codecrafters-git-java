@@ -13,11 +13,9 @@ public class TreeParser {
     this.process();
   }
 
-  // Helper method to extract a ByteBuffer slice until a specific delimiter
   private ByteBuffer extractUntil(ByteBuffer buffer, int delimiter) {
     int startPosition = buffer.position();
     while (buffer.get() != delimiter) {
-      // Advance until the delimiter is found
     }
     int endPosition = buffer.position() - 1; // Exclude the delimiter
     return buffer.duplicate().position(startPosition).limit(endPosition).slice();
@@ -37,7 +35,7 @@ public class TreeParser {
       nameBuffer.get(name);
 
       byte[] hash = new byte[20];
-      treeContentBuffer.get(hash); // Directly read the next 20 bytes
+      treeContentBuffer.get(hash);
 
       this.entries
           .add(new TreeEntry(new String(mode, StandardCharsets.UTF_8), new String(name, StandardCharsets.UTF_8), hash));

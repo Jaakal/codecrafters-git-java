@@ -25,20 +25,18 @@ public class TreeEntry {
     return this.hash;
   }
 
-  public byte[] serialize() {
-    try (ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream()) {
-      byteArrayOutputStream.write(this.mode.getBytes(StandardCharsets.UTF_8));
-      byteArrayOutputStream.write(' ');
+  public byte[] serialize() throws IOException {
+    ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
 
-      byteArrayOutputStream.write(this.name.getBytes(StandardCharsets.UTF_8));
-      byteArrayOutputStream.write(0);
+    byteArrayOutputStream.write(this.mode.getBytes(StandardCharsets.UTF_8));
+    byteArrayOutputStream.write(' ');
 
-      byteArrayOutputStream.write(this.hash);
+    byteArrayOutputStream.write(this.name.getBytes(StandardCharsets.UTF_8));
+    byteArrayOutputStream.write(0);
 
-      return byteArrayOutputStream.toByteArray();
-    } catch (IOException e) {
-      throw new RuntimeException("Failed to serialize TreeEntry", e);
-    }
+    byteArrayOutputStream.write(this.hash);
+
+    return byteArrayOutputStream.toByteArray();
   }
 
   @Override

@@ -5,7 +5,6 @@ public class ObjectParser {
   private final byte[] object;
   private final ByteBuffer objectBuffer;
   private ObjectType type;
-  private int typeStartIndex;
   private int typeLength;
   private int contentStartIndex;
   private int contentLength;
@@ -17,13 +16,15 @@ public class ObjectParser {
   }
 
   private void parseObjectType() {
-    this.typeStartIndex = 0;
-    int typeEndIndex = this.typeStartIndex;
+    int typeStartIndex = 0;
+    int typeEndIndex = typeStartIndex;
+
     while (this.object[typeEndIndex] != ASCII.BLANK_SPACE) {
       typeEndIndex++;
     }
-    this.typeLength = typeEndIndex - this.typeStartIndex;
-    String typeLabel = new String(this.object, typeStartIndex, typeLength, StandardCharsets.UTF_8);
+    this.typeLength = typeEndIndex - typeStartIndex;
+    String typeLabel = new String(this.object, typeStartIndex, typeLength,
+        StandardCharsets.UTF_8);
     this.type = ObjectType.fromLabel(typeLabel);
   }
 

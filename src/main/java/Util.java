@@ -1,8 +1,9 @@
 import java.io.ByteArrayOutputStream;
 import java.io.File;
-import java.io.FileNotFoundException;
+import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -11,24 +12,25 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.HashMap;
+import java.util.zip.DataFormatException;
 import java.util.zip.DeflaterOutputStream;
+import java.util.zip.Inflater;
 
 public class Util {
   private Util() {
   }
 
-  public static ArrayList<String> values = new ArrayList<>();
+  // public static int toInt(byte[] byteArray) {
+  // int result = 0;
 
-  public static int toInt(byte[] byteArray) {
-    int result = 0;
+  // for (byte b : byteArray) {
+  // // Shift existing bits and add current byte
+  // result = (result << 8) | (b & 0xFF);
+  // }
 
-    for (byte b : byteArray) {
-      // Shift existing bits and add current byte
-      result = (result << 8) | (b & 0xFF);
-    }
-
-    return result;
-  }
+  // return result;
+  // }
 
   public static String bytesToHexString(byte[] bytes) {
     StringBuilder hexString = new StringBuilder();
@@ -40,181 +42,164 @@ public class Util {
     return hexString.toString();
   }
 
-  public static byte[] generateRawSHAHash(byte[] input) {
-    try {
-      MessageDigest digest = MessageDigest.getInstance("SHA-1");
-      return digest.digest(input);
-    } catch (Exception e) {
-      // TODO: handle exception
-    }
-
-    return new byte[] {};
+  public static byte[] generateSHAHash(byte[] input) throws NoSuchAlgorithmException {
+    MessageDigest digest = MessageDigest.getInstance("SHA-1");
+    return digest.digest(input);
   }
 
-  public static byte[] generateRawSHAHash(String input, String algorithm) throws NoSuchAlgorithmException {
-    MessageDigest digest = MessageDigest.getInstance(algorithm);
-    return digest.digest(input.getBytes());
-  }
-
-  public static String generateSHAHash(String input, String algorithm) throws NoSuchAlgorithmException {
-    byte[] hashBytes = Util.generateRawSHAHash(input, algorithm);
-    return Util.bytesToHexString(hashBytes);
-  }
-
-  public static void writeCompressedDataToFile(String data, File file) throws IOException {
+  public static void writeCompressedDataToFile(byte[] data, File file) throws IOException {
     FileOutputStream fileOutputStream = new FileOutputStream(file);
     DeflaterOutputStream deflaterOutputStream = new DeflaterOutputStream(fileOutputStream);
-    deflaterOutputStream.write(data.getBytes());
+    deflaterOutputStream.write(data);
     deflaterOutputStream.close();
     fileOutputStream.close();
   }
 
-  public static void writeCompressedDataToFile(byte[] data, File file) {
-    try {
-      FileOutputStream fileOutputStream = new FileOutputStream(file);
-      DeflaterOutputStream deflaterOutputStream = new DeflaterOutputStream(fileOutputStream);
-      deflaterOutputStream.write(data);
-      deflaterOutputStream.close();
-      fileOutputStream.close();
-    } catch (Exception e) {
-      // TODO Auto-generated catch block
-      e.printStackTrace();
-    }
-  }
-
-  public static String[] blobBuilder(String fileName) throws IOException, NoSuchAlgorithmException {
-    String content = Files.readString(Paths.get(fileName));
-    String rawObject = "blob " + content.length() + "\0" + content;
-    String shaHash = Util.generateSHAHash(rawObject, "SHA-1");
-    return new String[] { shaHash, rawObject };
-  }
-
-  public static byte[] rawBlobHashBuilder(Path fileName) throws IOException, NoSuchAlgorithmException {
+  public static byte[] blobBuilder(Path fileName) throws IOException, NoSuchAlgorithmException {
     byte[] content = Files.readAllBytes(fileName);
     String header = "blob " + content.length + "\0";
     ByteArrayOutputStream blobStream = new ByteArrayOutputStream();
     blobStream.write(header.getBytes(StandardCharsets.UTF_8));
     blobStream.write(content);
-    byte[] blobData = blobStream.toByteArray();
-    return generateRawSHAHash(blobData);
+    return blobStream.toByteArray();
   }
 
-  public static void enlist(File currentDirectory) {
+  public static byte[] treeGenerator(File currentDirectory) throws NoSuchAlgorithmException, IOException {
     boolean isTopLevel = currentDirectory == null;
-    if (isTopLevel) {
-      currentDirectory = new File("./");
-    }
 
-    System.out.println("==== DIR ================================ " + currentDirectory.getName());
-
-    File[] files = currentDirectory.listFiles();
-    for (File file : files) {
-      try {
-        if (file.isFile()) {
-          // String content = Files.readString(Paths.get(file.getName()));
-          String content = Files.readString(file.toPath());
-          System.out.println("---- FILE ------------- " + file.getName());
-          byte[] shaHash = Util.rawBlobHashBuilder(file.toPath());
-          System.out.println(Util.bytesToHexString(shaHash));
-          System.out.println(content);
-          System.out.println("---- FILE ------------- " + file.getName());
-        }
-
-        if (file.isDirectory() && !file.getName().equals(".git")) {
-          Util.enlist(file);
-        }
-      } catch (Exception e) {
-        // TODO: handle exception
-      }
-    }
-
-    System.out.println("==== DIR ================================ " + currentDirectory.getName());
-  }
-
-  public static byte[] treeGenerator(File currentDirectory) {
-
-    boolean isTopLevel = currentDirectory == null;
     if (isTopLevel) {
       currentDirectory = new File("./");
     }
 
     File[] files = currentDirectory.listFiles();
     ArrayList<TreeEntry> entries = new ArrayList<>();
+
     for (File file : files) {
+      if (file.isFile()) {
+        byte[] hash = Util.generateSHAHash(Util.blobBuilder(file.toPath()));
+        entries.add(new TreeEntry(Constants.BLOB_MODE, file.getName(), hash));
+      }
 
-      // System.out.println(file.getName());
-      try {
-        if (file.isFile()) {
-          byte[] shaHash = Util.rawBlobHashBuilder(file.toPath());
-          entries.add(new TreeEntry("100644", file.getName(), shaHash));
-        }
-
-        if (file.isDirectory() && !file.getName().equals(".git")) {
-          byte[] shaHash = Util.treeGenerator(file);
-          entries.add(new TreeEntry("40000", file.getName(), shaHash));
-        }
-      } catch (Exception e) {
-        // TODO: handle exception
+      if (file.isDirectory() && !file.getName().equals(".git")) {
+        byte[] hash = Util.treeGenerator(file);
+        entries.add(new TreeEntry(Constants.TREE_MODE, file.getName(), hash));
       }
     }
 
     entries.sort(Comparator.comparing(TreeEntry::getName));
 
-    ByteArrayOutputStream contentStream = new ByteArrayOutputStream();
+    int contentSize = 0;
+    for (TreeEntry entry : entries) {
+      contentSize += entry.serialize().length;
+    }
+
+    String treeFileHeader = "tree " + contentSize + "\0";
+    ByteArrayOutputStream treeStream = new ByteArrayOutputStream();
+    treeStream.write(treeFileHeader.getBytes(StandardCharsets.UTF_8));
 
     for (TreeEntry entry : entries) {
-      try {
-        contentStream.write(entry.serialize());
-      } catch (IOException e) {
-        // TODO Auto-generated catch block
-        e.printStackTrace();
-      }
+      treeStream.write(entry.serialize());
     }
 
-    String header = "tree " + contentStream.size() + "\0";
-    ByteArrayOutputStream blobStream = new ByteArrayOutputStream();
-    try {
-      blobStream.write(header.getBytes(StandardCharsets.UTF_8));
-      blobStream.write(contentStream.toByteArray());
-    } catch (IOException e) {
-      // TODO Auto-generated catch block
-      e.printStackTrace();
-    }
-    byte[] blobData = blobStream.toByteArray();
-    byte[] hash = generateRawSHAHash(blobData);
-
-    // if (contentStream.size() == 0) {
-    // System.out.println(Util.bytesToHexString(hash));
-    // }
+    byte[] treeObjectData = treeStream.toByteArray();
+    byte[] hash = generateSHAHash(treeObjectData);
 
     if (isTopLevel) {
-      String shaHash = Util.bytesToHexString(hash);
-      String objectDirectory = ".git/objects/" + shaHash.substring(0, 2);
-      String objectFileName = shaHash.substring(2);
-      new File(objectDirectory).mkdirs();
-      final File objectFile = new File(objectDirectory, objectFileName);
-      try {
-        objectFile.createNewFile();
-      } catch (IOException e) {
-        // TODO Auto-generated catch block
-        e.printStackTrace();
-      }
-      Util.writeCompressedDataToFile(blobData, objectFile);
-      System.out.println(shaHash);
+      String hashString = Util.bytesToHexString(hash);
+      Util.writeObjectFile(treeObjectData, hashString);
+      System.out.println(hashString);
     }
 
     return hash;
   }
 
-  public static byte[] rawTreeHashBuilder(ArrayList<TreeEntry> entries) throws NoSuchAlgorithmException {
-    entries.sort(Comparator.comparing(TreeEntry::getName));
-    StringBuilder content = new StringBuilder();
+  public static void displayObjectContent(HashMap<Args, ArgumentValue> args) throws IOException, DataFormatException {
+    ObjectParser parsedObject = Util.parseObject(args);
+    System.out.print(parsedObject.getContentString());
+  }
 
-    for (TreeEntry entry : entries) {
-      content.append(entry.serialize());
+  public static void treeReader(HashMap<Args, ArgumentValue> args) throws IOException, DataFormatException {
+    ObjectParser parsedObject = Util.parseObject(args);
+    TreeParser parsedTree = new TreeParser(parsedObject);
+    parsedTree.printNames();
+  }
+
+  private static void writeObjectFile(byte[] objectData, String hash) throws IOException {
+    String objectFileDirectory = ".git/objects/" + hash.substring(0, 2);
+    String objectFileName = hash.substring(2);
+    new File(objectFileDirectory).mkdirs();
+    final File treeFile = new File(objectFileDirectory, objectFileName);
+    treeFile.createNewFile();
+    Util.writeCompressedDataToFile(objectData, treeFile);
+  }
+
+  public static HashMap<Args, ArgumentValue> parseArgs(String[] args) {
+    HashMap<Args, ArgumentValue> parsedArgs = new HashMap<>();
+
+    parsedArgs.put(Args.COMMAND, new ArgumentValue.CommandValue(Command.fromLabel(args[0])));
+    switch (((ArgumentValue.CommandValue) parsedArgs.get(Args.COMMAND)).value()) {
+      case Command.HASH_OBJECT -> {
+        String fileName = args[2];
+        parsedArgs.put(Args.FILE_NAME, new ArgumentValue.StringValue(fileName));
+        break;
+      }
+      case Command.LS_TREE,
+          Command.CAT_FILE -> {
+        String directory = args[2].substring(0, 2);
+        String fileName = args[2].substring(2);
+        parsedArgs.put(Args.DIRECTORY, new ArgumentValue.StringValue(directory));
+        parsedArgs.put(Args.FILE_NAME, new ArgumentValue.StringValue(fileName));
+        break;
+      }
+      default -> {
+      }
     }
 
-    String rawObject = "tree " + content.length() + "\0" + content;
-    return Util.generateRawSHAHash(rawObject, "SHA-1");
+    return parsedArgs;
+  }
+
+  public static ObjectParser parseObject(HashMap<Args, ArgumentValue> args) throws IOException, DataFormatException {
+    InputStream inputStream = new FileInputStream(
+        ".git/objects/" + ((ArgumentValue.StringValue) args.get(Args.DIRECTORY)).value() + "/"
+            + ((ArgumentValue.StringValue) args.get(Args.FILE_NAME)).value());
+    byte[] compressedData = inputStream.readAllBytes();
+
+    Inflater inflater = new Inflater();
+    inflater.setInput(compressedData);
+    byte[] contents = new byte[inflater.getRemaining()];
+    inflater.inflate(contents);
+
+    ObjectParser parsedObject = new ObjectParser(contents);
+
+    inputStream.close();
+    inflater.end();
+
+    return parsedObject;
+  }
+
+  public static void initializeRepository() throws IOException {
+    final File root = new File(".git");
+    new File(root, "objects").mkdirs();
+    new File(root, "refs").mkdirs();
+    final File head = new File(root, "HEAD");
+    head.createNewFile();
+    Files.write(head.toPath(), "ref: refs/heads/main\n".getBytes());
+    System.out.println("Initialized git directory");
+  }
+
+  public static void hashObject(HashMap<Args, ArgumentValue> parsedArgs) throws NoSuchAlgorithmException, IOException {
+    byte[] blob = Util
+        .blobBuilder(Paths.get(((ArgumentValue.StringValue) parsedArgs.get(Args.FILE_NAME)).value()));
+    byte[] hash = Util.generateSHAHash(blob);
+    String shaHash = Util.bytesToHexString(hash);
+
+    System.out.println(shaHash);
+
+    String objectDirectory = ".git/objects/" + shaHash.substring(0, 2);
+    String objectFileName = shaHash.substring(2);
+    new File(objectDirectory).mkdirs();
+    final File objectFile = new File(objectDirectory, objectFileName);
+    objectFile.createNewFile();
+    Util.writeCompressedDataToFile(blob, objectFile);
   }
 }
