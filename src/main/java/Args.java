@@ -4,5 +4,6 @@ public enum Args {
   COMMAND,
   TREE_SHA,
   COMMIT_SHA,
-  COMMIT_MESSAGE
+  COMMIT_MESSAGE,
+  URL
 }

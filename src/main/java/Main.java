@@ -30,9 +30,13 @@ public class Main {
           Util.createCommit(parsedArgs);
           break;
         }
+        case Command.CLONE -> {
+          Util.cloneRepository(parsedArgs);
+          break;
+        }
       }
-    } catch (Exception e) {
-      throw new RuntimeException(e);
+    } catch (Exception error) {
+      throw new RuntimeException(error);
     }
   }
 }

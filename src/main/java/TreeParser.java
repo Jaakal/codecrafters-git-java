@@ -42,11 +42,26 @@ public class TreeParser {
     }
   }
 
+  public ArrayList<TreeEntry> getEntries() {
+    return this.entries;
+  }
+
   public void printNames() {
     Iterator<TreeEntry> it = this.entries.iterator();
     while (it.hasNext()) {
       TreeEntry entry = it.next();
       System.out.println(entry.getName());
     }
+  }
+
+  @Override
+  public String toString() {
+    String output = "";
+    Iterator<TreeEntry> it = this.entries.iterator();
+    while (it.hasNext()) {
+      TreeEntry entry = it.next();
+      output += entry.toString() + "\n";
+    }
+    return output;
   }
 }
