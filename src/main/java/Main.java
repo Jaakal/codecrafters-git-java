@@ -1,37 +1,39 @@
-import java.util.HashMap;
+import git.GitArguments;
+import git.GitCliController;
+import git.GitCommand;
 
 public class Main {
-  public static void main(String[] args) {
-    final HashMap<Args, ArgumentValue> parsedArgs = Util.parseArgs(args);
+  public static void main(String[] arguments) {
+    GitArguments.parseCliArguments(arguments);
 
     try {
-      switch (((ArgumentValue.CommandValue) parsedArgs.get(Args.COMMAND)).value()) {
-        case Command.INIT -> {
-          Util.initializeRepository();
+      switch (GitArguments.getCommand()) {
+        case GitCommand.INIT -> {
+          GitCliController.initializeRepository();
           break;
         }
-        case Command.CAT_FILE -> {
-          Util.displayObjectContent(parsedArgs);
+        case GitCommand.CAT_FILE -> {
+          GitCliController.displayObjectContent();
           break;
         }
-        case Command.HASH_OBJECT -> {
-          Util.hashObject(parsedArgs);
+        case GitCommand.HASH_OBJECT -> {
+          GitCliController.hashObject();
           break;
         }
-        case Command.LS_TREE -> {
-          Util.treeReader(parsedArgs);
+        case GitCommand.LS_TREE -> {
+          GitCliController.displayTreeObjectContent();
           break;
         }
-        case Command.WRITE_TREE -> {
-          Util.treeGenerator(null);
+        case GitCommand.WRITE_TREE -> {
+          GitCliController.createTreeObject(GitArguments.getRootDirectoryPath());
           break;
         }
-        case Command.COMMIT_TREE -> {
-          Util.createCommit(parsedArgs);
+        case GitCommand.COMMIT_TREE -> {
+          GitCliController.createCommitObjectBasedOnTree();
           break;
         }
-        case Command.CLONE -> {
-          Util.cloneRepository(parsedArgs);
+        case GitCommand.CLONE -> {
+          GitCliController.cloneRepository();
           break;
         }
       }

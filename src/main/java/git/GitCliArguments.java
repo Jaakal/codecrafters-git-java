@@ -1,4 +1,6 @@
-public enum Args {
+package git;
+
+public enum GitCliArguments {
   DIRECTORY,
   FILE_NAME,
   COMMAND,
